@@ -1,0 +1,115 @@
+---
+title: "Programming Assignmet 1"
+author: "Carlos Rios"
+date: "8/25/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Program Assignment 1 - Coursera - Johns Hopkings University
+This is an R Markdown document / Este es un documento creado en R markdown
+
+Loading libraries / Cargando librerias
+```{r echo=TRUE}
+
+library("data.table")
+library(ggplot2)
+
+```
+
+Loading and processing data / Cargando y procesando datos
+```{r echo=TRUE}
+## Loading and processing data / Cargando y procesando datos
+fileUrl <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip"
+download.file(fileUrl, destfile = paste0(getwd(), '/repdata%2Fdata%2Factivity.zip'), method = "curl")
+unzip("repdata%2Fdata%2Factivity.zip",exdir = "data")
+## Reading CSV File Data / Leyendo archivo de datos CSV
+activityDT <- data.table::fread(input = "data/activity.csv")
+## Calculate the total number of steps taken per day / Calcule el número total de pasos dados por día
+Total_Steps <- activityDT[, c(lapply(.SD, sum, na.rm = FALSE)), .SDcols = c("steps"), by = .(date)] 
+head(Total_Steps, 10)
+```
+
+Histogram graph / Grafico Histograma
+```{r echo=TRUE}
+
+## Doing Histogram / Realizando histograma
+ggplot(Total_Steps, aes(x = steps)) +
+  geom_histogram(fill = "blue", binwidth = 1000) +
+  labs(title = "Daily Steps", x = "Steps", y = "Frequency") 
+```
+
+Calculate the mean and median of the total number of steps taken per day /
+Calculando la media y mediana del numero total de pasos por dia
+```{r echo=TRUE}
+
+## Calculate the mean and median of the total number of steps taken per day /
+## Calculando la media y mediana del numero total de pasos por dia
+Total_Steps[, .(Mean_Steps = mean(steps, na.rm = TRUE), Median_Steps = median(steps, na.rm = TRUE))]
+
+```
+
+Calculate average daily activity pattern / Calculando patron de actividad diaria promedio
+```{r echo=TRUE}
+
+## Calculate average daily activity pattern / Calculando patron de actividad diaria promedio
+IntervalDT <- activityDT[, c(lapply(.SD, mean, na.rm = TRUE)), .SDcols = c("steps"), by = .(interval)] 
+IntervalDT[steps == max(steps), .(max_interval = interval)]
+
+```
+
+```{r echo=TRUE}
+
+## Doing graph / Realizando grafico
+ggplot(IntervalDT, aes(x = interval , y = steps)) + geom_line(color="blue", size=1) + 
+  labs(title = "Avgerage Daily Steps", x = "Interval", y = "Avgerage Steps per day")
+
+```
+
+Imputing missing values / Introduciendo los valores perdidos
+```{r echo=TRUE}
+
+## Imputing missing values / Introduciendo los valores perdidos
+activityDT[is.na(steps), .N ]
+# Filling in missing values with median / Rellenando valores perdidos con la media
+activityDT[is.na(steps), "steps"] <- activityDT[, c(lapply(.SD, median, na.rm = TRUE)), .SDcols = c("steps")]
+data.table::fwrite(x = activityDT, file = "data/tidyData.csv", quote = FALSE)
+# Total number of steps taken per day / Calculo del total de pasos tomados por dia
+Total_Steps <- activityDT[, c(lapply(.SD, sum)), .SDcols = c("steps"), by = .(date)] 
+# mean and median total number of steps taken per day / media y mediana total del numero de pasos diarios
+Total_Steps[, .(Mean_Steps = mean(steps), Median_Steps = median(steps))]
+
+```
+
+```{r echo=TRUE}
+
+#Doing the graph / Trazando el grafico
+ggplot(Total_Steps, aes(x = steps)) + geom_histogram(fill = "red", binwidth = 1000) + 
+  labs(title = "Daily Steps", x = "Steps", y = "Frequency")
+
+```
+
+```{r echo=TRUE}
+
+# New factor variable in the dataset / Nueva variable de factor en el conjunto de datos
+activityDT <- data.table::fread(input = "data/activity.csv")
+activityDT[, date := as.POSIXct(date, format = "%Y-%m-%d")]
+activityDT[, `Day of Week`:= weekdays(x = date)]
+activityDT[grepl(pattern = "Monday|Tuesday|Wednesday|Thursday|Friday", x = `Day of Week`), "weekday or weekend"] <- "weekday"
+activityDT[grepl(pattern = "Saturday|Sunday", x = `Day of Week`), "weekday or weekend"] <- "weekend"
+activityDT[, `weekday or weekend` := as.factor(`weekday or weekend`)]
+head(activityDT, 10)
+# Panel plot containing a time series / Grafico de panel que contiene una serie de tiempo
+activityDT[is.na(steps), "steps"] <- activityDT[, c(lapply(.SD, median, na.rm = TRUE)), .SDcols = c("steps")]
+IntervalDT <- activityDT[, c(lapply(.SD, mean, na.rm = TRUE)), .SDcols = c("steps"), by = .(interval, `weekday or weekend`)] 
+```
+
+```{r echo=TRUE}
+#Doing the graph / Trazando el grafico
+ggplot(IntervalDT , aes(x = interval , y = steps, color=`weekday or weekend`)) + 
+  geom_line() + labs(title = "Avgerage Daily Steps by Weektype", x = "Interval", y = "No. of Steps") +
+  facet_wrap(~`weekday or weekend` , ncol = 1, nrow=2)
+```
